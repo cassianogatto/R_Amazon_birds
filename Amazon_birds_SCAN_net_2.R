@@ -1,25 +1,25 @@
 # lets analyse the biogeography of the birds of the Amazon through SCAN_network
 
 # set working directory
-setwd("C:/Users/cassiano/hubic/Amazon_birds")
+setwd("C:/Users/cassiano/hubic/Amazon_birds/R_Amazon_birds")
 # read SCAN functions and load required libraries
-source("C:/Users/cassiano/hubic/DOC-MAIN/SCAN_to_GRAPH/SOURCE_SCAN_network_13.1.R", echo=TRUE)
+source("C:/Users/cassiano/hubic/Amazon_birds/R_Amazon_birds/SOURCE_SCAN_network_14.R", echo=TRUE)
 # load distribution maps of species
 map = st_read("D:SIG2018_30GB/spp50_AEs_ecoreg.shp")
-
 sa = st_read("D:/SIG2018_30GB/South_America/South_America.shp") # crs 4326 WGS84
 sa = sa %>% st_union
 amaz = st_read("D:/SIG2018_30GB/amazonia_sensulatissimo.shp")
 st_crs(amaz) = 4326
-# change CRS https://epsg.io/31985  SIRGAS 2000 25S
-# map = map %>% st_transform(crs = 31985)
-# sa = sa %>% st_transform(crs = 31985)
-# amaz = amaz %>% st_transform(crs = 31985)
 
 # check column names and non-valid features
 map %>% str
 map = map %>% select(sp = "SCINAME", geometry)
 map %>% names
+
+# change CRS https://epsg.io/31985  SIRGAS 2000 25S to fix invalid features!! only way I managed to get some maps to work properly
+map = map %>% st_transform(crs = 31985)
+sa = sa %>% st_transform(crs = 31985)
+amaz = amaz %>% st_transform(crs = 31985)
 
 # Check for 'invalid' shapes and fix them
 invalid = !(st_is_valid(map))
@@ -66,6 +66,8 @@ Cs_overlaps = Cs_overlaps %>% filter(Cs > units::set_units(0.0099,1))
 Cs = Cs_overlaps %>% select(1,2,3)
 Cs %>% arrange(desc(Cs))
 
+# Cs %>% write.csv2(.,'Cs_spatial_congruence_Amazon_birds.csv')
+Cs = read.csv('Cs_spatial_congruence_Amazon_birds.csv', header = T, sep = ',') %>% as_tibble()
 #### CREATE GRAPH OBJECT  ####
 C  = Cs %>% mutate(Cs = round(Cs,2)) %>% 
         select(from = sp1, to = sp2, Cs) %>%
@@ -82,54 +84,56 @@ C = C %>% activate(nodes) %>% mutate(.tidygraph_index = seq_len(n()))
  ### SCAN network  ####
 ########################
 # last MOD with mark_overlap and filer_overlap distinction  # don't know if max_diameter is working
-SCANlist9791 = SCAN_lite(graph = C,       max_Ct = 0.97,    min_Ct = 0.91,    Ct_resolution = -0.02,
-               max_diameter = 15,   mark_overlap =TRUE)
-SCANlist8981 = SCAN_lite(graph = C,       max_Ct = 0.89,    min_Ct = 0.81,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist7971 = SCAN_lite(graph = C,       max_Ct = 0.79,    min_Ct = 0.71,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist6961 = SCAN_lite(graph = C,       max_Ct = 0.69,    min_Ct = 0.61,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist5953 = SCAN_lite(graph = C,       max_Ct = 0.59,    min_Ct = 0.53,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist5147 = SCAN_lite(graph = C,       max_Ct = 0.51,    min_Ct = 0.47,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist4543
-SCANlist4141 = SCAN_lite(graph = C,       max_Ct = 0.41,    min_Ct = 0.41,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist3939 = SCAN_lite(graph = C,       max_Ct = 0.39,    min_Ct = 0.39,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
-SCANlist3737 = SCAN_lite(graph = C,       max_Ct = 0.37,    min_Ct = 0.37,    Ct_resolution = -0.02,
-                         max_diameter = 15,   mark_overlap =TRUE)
+SCANlist9791 = SCAN_lite(graph = C,       max_Ct = 0.97,    min_Ct = 0.91,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist8981 = SCAN_lite(graph = C,       max_Ct = 0.89,    min_Ct = 0.81,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist7971 = SCAN_lite(graph = C,       max_Ct = 0.79,    min_Ct = 0.71,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist6961 = SCAN_lite(graph = C,       max_Ct = 0.69,    min_Ct = 0.61,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist5953 = SCAN_lite(graph = C,       max_Ct = 0.59,    min_Ct = 0.53,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+
+SCANlist5147 = SCAN_lite(graph = C,       max_Ct = 0.51,    min_Ct = 0.47,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist4543 = SCAN_lite(graph = C,       max_Ct = 0.45,    min_Ct = 0.43,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist4141 = SCAN_lite(graph = C,       max_Ct = 0.41,    min_Ct = 0.41,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist3939 = SCAN_lite(graph = C,       max_Ct = 0.39,    min_Ct = 0.39,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist3737 = SCAN_lite(graph = C,       max_Ct = 0.37,    min_Ct = 0.37,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 
 'birds is the object combining all scanned data'
 'UPDATE SCAN_lite list'
 ## functions ##
 
 
-g1 = bird$graph; g2 = SCANlist3531$graph
 update_graph = function(g1 = list_a$graph, g2 = list_b$graph){
-        new_graph = graph_join(g1,g2) %>% to_undirected()
+        
+        na = g1 %>% activate(nodes) %>% as_tibble()
+        nb = g2 %>% activate(nodes) %>% as_tibble()
+        ea = g1 %>% activate(edges) %>% as_tibble()
+        eb = g2 %>% activate(edges) %>% as_tibble()
+        
+        nab = left_join(na,nb)
+        eab = left_join(ea,eb)
+        
+        tbl_graph(nodes = nab, edges = eab, directed = F)
 }
 
 update_SCAN_list = function(list_a, list_b){
         updatedSCANlist = list()
         # chorotypes tibble
         updatedSCANlist$chorotypes = rbind(list_a$chorotypes, list_b$chorotypes)
-        updatedSCANlist$chorotypes = updatedSCANlist$chorotypes %>% arrange(desc(Ct_max), desc(richness_spp), desc(max_centrality))
+        updatedSCANlist$chorotypes = updatedSCANlist$chorotypes %>% group_by(chorotype_spp, richness_spp) %>% 
+                summarise(no_overlap = max(no_overlap),Ct_max = max(Ct_max), Ct_min = min(Ct_min), diameter = max(diameter), 
+                          max_centrality = max(max_centrality), max_betweenness = max(max_betweenness)) %>% 
+                arrange(desc(Ct_max), desc(richness_spp), chorotype_spp)
         # summary for all species
-        updatedSCANlist$all_spp_summary = rbind(list_a$all_spp_summary, list_b$all_spp_summary)
-        updatedSCANlist$all_spp_summary = updatedSCANlist$all_spp_summary %>% group_by(name) %>% 
-                summarise(components = paste0(unique(components), collapse = ','),
-                order = paste(unique(order), collapse = ','),   
-                max_Ct = max(max_Ct), min_Ct = min(min_Ct), max_diam = max(max_diam), min_diam = min(min_diam),
-                max_between = max(max_between), no_overlap = max(no_overlap)) %>% arrange(desc(max_Ct),components, desc(max_between))
+        updatedSCANlist$all_spp_summary = rbind(list_a$all_spp_summary, list_b$all_spp_summary) %>% 
+                group_by(name, no_overlap,components, order) %>% 
+                summarise(max_Ct = max(max_Ct), min_Ct = min(min_Ct), max_diam = max(max_diam),
+                          min_diam = min(min_diam), max_between = max(max_between))
+        
         # detailed species accounts
         updatedSCANlist$all_spp = rbind(list_a$all_spp, list_b$all_spp)
         
         # graph of spatial interactions DO NOT USE GRAPH_JOIN -> it duplicates the edges
-        updatedSCANlist$graph =  graph_join(list_a$graph, list_b$graph) %>% to_undirected()
-        
+        updatedSCANlist$graph =  #graph_join(list_a$graph, list_b$graph) %>% to_undirected() %>%  igraph::simplify() %>% as_tbl_graph(directed = F) # this loses the Cs column ...
+                update_graph(g1 = list_a$graph, g2 = list_b$graph)
         # combined descriptive parameters
         updatedSCANlist[["parameters"]] = tibble(max_diameter = max(list_a$parameters$max_diameter,list_b$parameters$max_diameter),
                                         max_Ct = max(list_a$parameters$max_Ct, list_b$parameters$max_Ct), 
@@ -142,20 +146,19 @@ update_SCAN_list = function(list_a, list_b){
 }
 
 bird = SCANlist9791
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist8981)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist7971)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist6961)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist5953)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist5147)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist4543)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist4141)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist3939)
-# bird = update_SCAN_list(list_a = bird, list_b = SCANlist3737)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist8981)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist7971)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist6961)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist5953)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist5147)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist4543)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist4141)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist3939)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist3737)
 bird_bckup = bird
 'filtering out species already "non-overlapped" - a thousand times faster'
 #using bird
-SCANlist3531 = SCAN_lite(graph = bird$graph %>% activate(nodes) %>% filter(is.na(no_overlap)), max_Ct = 0.35, min_Ct = 0.31, Ct_resolution = -0.02, max_diameter = 15,   mark_overlap =TRUE)
-
+'completing the SCAN process to low levels of congruence, removing most already analyzed and non-overlapped species...'
 #using filtered C
 current_threshold = threshold
 filter_out_spp = bird$graph %>% activate(nodes) %>% filter(!is.na(no_overlap) & (no_overlap > current_threshold)) %>% as_tibble() %>% select(name) %>% pull()
@@ -164,8 +167,11 @@ filter_out_spp = bird$graph %>% activate(nodes) %>% filter(!is.na(no_overlap) & 
 SCANlist3531b = SCAN_lite(graph = C %>% activate(nodes) %>% filter(!name %in% filter_out_spp), 
                 max_Ct = 0.35, min_Ct = 0.25, Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 
-test = update_SCAN_list(list_a = bird, list_b = SCANlist3531b)  #  <- NOT WORKING with SCANlists based on bird$graph
-test1 = update_graph(bird$graph, SCANlist3531b$graph)
+SCANlist2515 = SCAN_lite(graph = C %>% activate(nodes) %>% filter(!name %in% filter_out_spp), 
+                                    max_Ct = 0.35, min_Ct = 0.25, Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+
+'UPDATE bird list'
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist3531b)  #  <- NOT WORKING with SCANlists based on bird$graph
 
 
 # save SCAN list

@@ -1,7 +1,5 @@
 #setups
-g = bird$graph
-g = SCANlist3531b$graph
-g = test$graph
+g = bird$graph 
  {save = FALSE; part = 1; cut = 9; select_chorotypes = TRUE; 
 device1 = 4; device2 = 5
 pg = T;pm =T;
@@ -10,7 +8,7 @@ alfa_map = 0.2
 layout =c('fr') # 'graphot') # 'fr') # 'dh') # 'mds')#"drl") # other options kk, fr, ldl, gem
 }
 #### set threshold  " (the threshold value chosen here must match a column defined in the SCAN object$graph)"####
-threshold = 0.31
+threshold = 0.53
 # 1st main routine
 {        g_spp = g %>% activate(nodes) %>% as_tibble %>% 
                 filter(get(paste0("Ct",threshold))) %>% 
@@ -31,13 +29,13 @@ threshold = 0.31
                 select(component = paste0('components',threshold), everything())}  #
 # total components (chorotypes)
 print('all_components'); all_components = g_full %>% activate(nodes) %>% select(contains('components')) %>% pull() %>% unique(); all_components
-g_spp %>% group_by(component = get(paste0("components",threshold))) %>% summarise(spp = paste(name, collapse = ", "), n_spp = n()) %>% 
-        mutate(threshold = threshold)  %>% View()# %>% write.table(.,'clipboard')#
+if (F) {g_spp %>% group_by(component = get(paste0("components",threshold))) %>% summarise(spp = paste(name, collapse = ", "), n_spp = n()) %>% 
+        mutate(threshold = threshold)  %>% View()} else {g_spp %>% group_by(component = get(paste0("components",threshold))) %>% summarise(spp = paste(name, collapse = ", "), n_spp = n()) %>% mutate(threshold = threshold)}
 #### LIST OF CHOROTYPES to be show ####
-list_chorotypes = scan('clipboard')[]
-# list_chorotypes = c(1:14)#17,20,21,25,32,35)#c(3:6,8,9,11:16)# c(1:36)#c(6,8,9,11:23,25,28,29,31:35); # seq(1,31); #seq(17,31,1) #seq(2, 16, 2) #seq(1,15, by = 2)# c(15:25) ;# c(1:15) 
-# cooking graph and map objects
- {# 2nd main routine
+#list_chorotypes = scan('clipboard')[]
+list_chorotypes = c(2:6,8:15)#17,20,21,25,32,35)#c(3:6,8,9,11:16)# c(1:36)#c(6,8,9,11:23,25,28,29,31:35); # seq(1,31); #seq(17,31,1) #seq(2, 16, 2) #seq(1,15, by = 2)# c(15:25) ;# c(1:15) 
+# cooking graph and map objects # 2nd main routine 
+{
 # partial g_sub
 if(isTRUE(select_chorotypes)){ g_sub = g_full %>% activate(nodes) %>% filter(get(paste0('components', threshold))  %in% list_chorotypes); ind = ''
         } else {if(part == 1) {g_sub = g_full %>% activate(nodes) %>% filter(get(paste0('components', threshold))  < cut); ind = 'A'

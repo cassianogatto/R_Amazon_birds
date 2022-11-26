@@ -834,24 +834,39 @@ SCAN_lite =
 
 ## functions ##
 
+update_graph = function(g1 = list_a$graph, g2 = list_b$graph){
+        
+        na = g1 %>% activate(nodes) %>% as_tibble()
+        nb = g2 %>% activate(nodes) %>% as_tibble()
+        ea = g1 %>% activate(edges) %>% as_tibble()
+        eb = g2 %>% activate(edges) %>% as_tibble()
+        
+        nab = left_join(na,nb)
+        eab = left_join(ea,eb)
+        
+        tbl_graph(nodes = nab, edges = eab, directed = F)
+}
+
 update_SCAN_list = function(list_a, list_b){
         updatedSCANlist = list()
         # chorotypes tibble
         updatedSCANlist$chorotypes = rbind(list_a$chorotypes, list_b$chorotypes)
-        updatedSCANlist$chorotypes = updatedSCANlist$chorotypes %>% arrange(desc(Ct_max), desc(richness_spp), desc(max_centrality))
+        updatedSCANlist$chorotypes = updatedSCANlist$chorotypes %>% group_by(chorotype_spp, richness_spp) %>% 
+                summarise(no_overlap = max(no_overlap),Ct_max = max(Ct_max), Ct_min = min(Ct_min), diameter = max(diameter), 
+                          max_centrality = max(max_centrality), max_betweenness = max(max_betweenness)) %>% 
+                arrange(desc(Ct_max), desc(richness_spp), chorotype_spp)
         # summary for all species
-        updatedSCANlist$all_spp_summary = rbind(list_a$all_spp_summary, list_b$all_spp_summary)
-        updatedSCANlist$all_spp_summary = updatedSCANlist$all_spp_summary %>% group_by(name) %>% 
-                summarise(components = paste0(unique(components), collapse = ','),
-                          order = paste(unique(order), collapse = ','),   
-                          max_Ct = max(max_Ct), min_Ct = min(min_Ct), max_diam = max(max_diam), min_diam = min(min_diam),
-                          max_between = max(max_between), no_overlap = max(no_overlap)) %>% arrange(desc(max_Ct),components, desc(max_between))
+        updatedSCANlist$all_spp_summary = rbind(list_a$all_spp_summary, list_b$all_spp_summary) %>% 
+                group_by(name, no_overlap,components, order) %>% 
+                summarise(max_Ct = max(max_Ct), min_Ct = min(min_Ct), max_diam = max(max_diam),
+                          min_diam = min(min_diam), max_between = max(max_between))
+        
         # detailed species accounts
         updatedSCANlist$all_spp = rbind(list_a$all_spp, list_b$all_spp)
         
         # graph of spatial interactions DO NOT USE GRAPH_JOIN -> it duplicates the edges
-        updatedSCANlist$graph =  graph_join(list_a$graph, list_b$graph) %>% to_undirected()
-        
+        updatedSCANlist$graph =  #graph_join(list_a$graph, list_b$graph) %>% to_undirected() %>%  igraph::simplify() %>% as_tbl_graph(directed = F) # this loses the Cs column ...
+                update_graph(g1 = list_a$graph, g2 = list_b$graph)
         # combined descriptive parameters
         updatedSCANlist[["parameters"]] = tibble(max_diameter = max(list_a$parameters$max_diameter,list_b$parameters$max_diameter),
                                                  max_Ct = max(list_a$parameters$max_Ct, list_b$parameters$max_Ct), 
