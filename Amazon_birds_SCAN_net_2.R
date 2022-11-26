@@ -109,16 +109,7 @@ SCANlist3737 = SCAN_lite(graph = C,       max_Ct = 0.37,    min_Ct = 0.37,    Ct
 
 g1 = bird$graph; g2 = SCANlist3531$graph
 update_graph = function(g1 = list_a$graph, g2 = list_b$graph){
-        
-        if(class(g1)[1] != "tbl_graph" | class(g2)[1] != "tbl_graph"){stop(); print('pls, use tbl tidygraphs')}
-        #node
-        n_a = g1 %>% activate(nodes) %>% as_tibble; n_b = g2 %>% activate(nodes) %>% as_tibble
-        nodes = full_join(n_a,n_b)       #, by = c('name' = 'name', '.tidygraph_index' = '.tidygraph_index', 'no_overlap' = 'no_overlap'))#, '.tidygraph_index' = '.tidygraph_index'
-        #edge
-        e_a =  g1 %>% activate(edges) %>% as_tibble; e_b = g2 %>% activate(edges) %>% as_tibble
-        edges = full_join(e_a,e_b)    #,  by = c('from' = 'from', 'to' = 'to', 'Cs' = 'Cs'))
-        #tbl_graph
-        return(tbl_graph(nodes, edges, directed=F))
+        new_graph = graph_join(g1,g2) %>% to_undirected()
 }
 
 update_SCAN_list = function(list_a, list_b){
@@ -137,7 +128,7 @@ update_SCAN_list = function(list_a, list_b){
         updatedSCANlist$all_spp = rbind(list_a$all_spp, list_b$all_spp)
         
         # graph of spatial interactions DO NOT USE GRAPH_JOIN -> it duplicates the edges
-        updatedSCANlist$graph = update_graph(g1 = list_a$graph, g2 = list_b$graph)
+        updatedSCANlist$graph =  graph_join(list_a$graph, list_b$graph) %>% to_undirected()
         
         # combined descriptive parameters
         updatedSCANlist[["parameters"]] = tibble(max_diameter = max(list_a$parameters$max_diameter,list_b$parameters$max_diameter),
@@ -151,29 +142,30 @@ update_SCAN_list = function(list_a, list_b){
 }
 
 bird = SCANlist9791
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist8981)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist7971)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist6961)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist5953)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist5147)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist4543)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist4141)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist3939)
-bird = update_SCAN_list(list_a = bird, list_b = SCANlist3737)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist8981)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist7971)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist6961)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist5953)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist5147)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist4543)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist4141)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist3939)
+# bird = update_SCAN_list(list_a = bird, list_b = SCANlist3737)
 bird_bckup = bird
 'filtering out species already "non-overlapped" - a thousand times faster'
 #using bird
 SCANlist3531 = SCAN_lite(graph = bird$graph %>% activate(nodes) %>% filter(is.na(no_overlap)), max_Ct = 0.35, min_Ct = 0.31, Ct_resolution = -0.02, max_diameter = 15,   mark_overlap =TRUE)
+
 #using filtered C
 current_threshold = threshold
-filter_out_spp = bird$graph %>% activate(nodes) %>% filter(!is.na(no_overlap) & no_overlap > current_threshold) %>% as_tibble() %>% select(name) %>% pull()
+filter_out_spp = bird$graph %>% activate(nodes) %>% filter(!is.na(no_overlap) & (no_overlap > current_threshold)) %>% as_tibble() %>% select(name) %>% pull()
 # filter_in_spp = C %>% activate(nodes) %>% filter(!name %in% filter_out_spp) %>% as_tibble() %>% select(name) %>% pull()
 
 SCANlist3531b = SCAN_lite(graph = C %>% activate(nodes) %>% filter(!name %in% filter_out_spp), 
                 max_Ct = 0.35, min_Ct = 0.25, Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 
 test = update_SCAN_list(list_a = bird, list_b = SCANlist3531b)  #  <- NOT WORKING with SCANlists based on bird$graph
-
+test1 = update_graph(bird$graph, SCANlist3531b$graph)
 
 
 # save SCAN list
