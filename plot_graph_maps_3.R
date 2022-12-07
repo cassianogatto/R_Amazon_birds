@@ -4,12 +4,12 @@ g = test$graph
  {save = FALSE; part = 1; cut = 9; select_chorotypes = TRUE; 
 device1 = 4; device2 = 5
 pg = T;pm =T;
-palette = 'Accent'#"Spectral"#'Accent'#'Greens' # "Reds"#"BrBG" , #RdYlGn","PiYG", #  BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral
+palette = c('Accent')#"Spectral"#'Accent'#'Greens' # "Reds"#"BrBG" , #RdYlGn","PiYG", #  BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral
 alfa_map = 0.2
 layout =c('fr') # 'graphot') # 'fr') # 'dh') # 'mds')#"drl") # other options kk, fr, ldl, gem
 }
 #### set threshold  " (the threshold value chosen here must match a column defined in the SCAN object$graph)"####
-threshold = 0.37
+threshold = 0.47
 # 1st main routine
 {        g_spp = g %>% activate(nodes) %>% as_tibble %>% 
                 filter(!is.na(get(paste0("components",threshold)))) %>% 
@@ -17,11 +17,10 @@ threshold = 0.37
                 arrange(get(paste0('components',threshold)), name) %>% unique
         n_comp = g_spp %>% select(contains('component')) %>% pull() %>% unique() %>% length(); n_comp
         
-        g_full = g %>% activate(nodes) %>% #as_tibble %>% group
-                filter(!is.na(get(paste0("components",threshold)))) %>% #select(Ct0.69)
+        g_full = g %>% activate(nodes) %>% 
+                filter(!is.na(get(paste0("components",threshold)))) %>% 
                 select(name, paste0('components',threshold)) %>% 
-                # here, I used activate(edges) %>% select(from, to, Cs) %>% filter(Cs >= threshold) %>% when my fixed graph has no Ct Columns in edges 
-                activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold) #, paste0('Ct',threshold)) %>%
+                activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold) %>% 
                 activate(nodes) %>% arrange(get(paste0('components',threshold)), name)
         
         # right join to preserve sf attributes in tibble (the left object is spatial - the result inherits its properties)
@@ -55,9 +54,9 @@ g_map1 %>% st_drop_geometry() %>% group_by(component) %>% summarise(spp = paste0
 g_sub %>% activate(nodes) %>% select(name, comp = paste0('components', threshold)) %>% as_tibble() %>% 
         group_by(comp) %>% summarise(spp = paste(name, collapse = ', '))
 # graph setups
-{deg <- degree(g_sub, mode="all")
-lay = create_layout(g_sub, layout = layout)# 
-lou <- cluster_louvain(g_sub)}
+{lay = create_layout(g_sub, layout = layout)# 
+# lou <- cluster_louvain(g_sub)
+} # settings
 basic_graph = 
         ggraph(lay) + 
         geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) + #

@@ -21,13 +21,11 @@ the exact Ct the chorotype gains no-overlapping species'
 #### SOURCE to SCAN network ####
 " Tidygraph has a problem: it does not recognizes the option delete.vertices, as in igraph original function;
 to_subgraph, here, addresses and fixes this problem"
-# install.packages("extrafont")
-library(extrafont)
-loadfonts(device = "win")
-# extrafont::loadfonts(device="win")
+
 library(ggplot2)
 library(ggforce)
-library(tidyverse)
+# library(tidyverse)
+library(dplyr)
 library(igraph)
 library(tidygraph)
 library(ggraph)
@@ -51,15 +49,15 @@ partial_components =
                 threshold = threshold, 
                 filter_diameter = FALSE, 
                 filter_depth = FALSE, 
-                overlap = FALSE,...){
-        
-        # if(isTRUE(overlap) & isTRUE(filter_diameter)){
+                filter_overlap = FALSE, ...){
+        print("using 'igraph::group_components' - see more options of community structurig in '?group_components'")
+        # if(isTRUE(filter_overlap) & isTRUE(filter_diameter)){
         #         
         #         filter = (Cs >= threshold & is.na(.N()$no_overlap[from]) & is.na(.N()$filter[from]))
         #         
         # } else {
         #         
-        #         if(isTRUE(overlap)){ filter = (Cs >= threshold & is.na(.N()$no_overlap[from]))
+        #         if(isTRUE(filter_overlap)){ filter = (Cs >= threshold & is.na(.N()$no_overlap[from]))
         #                 
         #         } else {
         #                 
@@ -70,7 +68,7 @@ partial_components =
         #  }       }        }
         # <- trying to make code shorter with a filter        
                 
-        if(isTRUE(overlap) & isTRUE(filter_diameter)) { graph %>% morph(to_subgraph, subset_by = "edges", 
+        if(isTRUE(filter_overlap) & isTRUE(filter_diameter)) { graph %>% morph(to_subgraph, subset_by = "edges", 
                               (Cs >= threshold & is.na(.N()$no_overlap[from]) & is.na(.N()$filter[from])), # check the node respective to the 'from' edge table
                               remove_multiples = TRUE, delete.vertices= TRUE) %>% 
                         activate(edges) %>% mutate("Ct{threshold}" := TRUE) %>% 
@@ -78,7 +76,7 @@ partial_components =
                         mutate("components{threshold}" := group_components("weak")) %>% # identify connected elements in COMPONENTS (simpler commuity definition)
                         unmorph()
         } else {
-                if(isTRUE(overlap)) {
+                if(isTRUE(filter_overlap)) {
                         graph %>% morph(to_subgraph, subset_by = "edges", 
                                       (Cs >= threshold & is.na(.N()$no_overlap[from])), 
                                       remove_multiples = TRUE, delete.vertices= TRUE) %>% 
@@ -607,7 +605,7 @@ SCAN1 = function(graph = C,
         return(chorotypes)
 }
 
-# to be finished... figure out which criteria is stopping chorotypes growth - is it filter? 
+#### to be finished... figure out which criteria is stopping chorotypes growth - is it filter? ####
 
 # SCAN_lite = function(graph = C,
 #                      max_diameter = 10,
@@ -621,7 +619,7 @@ SCAN1 = function(graph = C,
 #         g_spp_all = tibble()
 #         g_summary_all = tibble()
 #         
-#         #### MAIN LOOP ####
+#         #  # MAIN LOOP #  #
 #         for(threshold in seq(max_Ct,min_Ct,Ct_resolution)){
 #                 
 #                 if(length(filter_out_spp) != 0) {
@@ -701,7 +699,7 @@ SCAN_lite =
                         
                         # any species to be filtered out? (1)
                         if(length(filter_out_spp) != 0) {
-                                graph = bird$graph %>% morph(to_subgraph, subset_by = "nodes",  name %in% filter_out_spp,
+                                graph = graph %>% morph(to_subgraph, subset_by = "nodes",  name %in% filter_out_spp,
                                                              remove_multiples = TRUE, delete.vertices= TRUE) %>% mutate(filter = 1) %>% 
                                         unmorph() } 
                         
