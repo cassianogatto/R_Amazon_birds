@@ -1,6 +1,6 @@
 #setups
 g = bird$graph 
-g = test$graph
+# g = graph21 |> activate(nodes) |> filter(is.na(no_overlap))
  {save = FALSE; part = 1; cut = 9; select_chorotypes = TRUE; 
 device1 = 4; device2 = 5
 pg = T;pm =T;
@@ -9,7 +9,7 @@ alfa_map = 0.2
 layout =c('fr') # 'graphot') # 'fr') # 'dh') # 'mds')#"drl") # other options kk, fr, ldl, gem
 }
 #### set threshold  " (the threshold value chosen here must match a column defined in the SCAN object$graph)"####
-threshold = 0.47
+threshold = 0.25
 # 1st main routine
 {        g_spp = g %>% activate(nodes) %>% as_tibble %>% 
                 filter(!is.na(get(paste0("components",threshold)))) %>% 
@@ -32,7 +32,7 @@ if (F) {g_spp %>% group_by(component = get(paste0("components",threshold))) %>% 
         mutate(threshold = threshold)  %>% View()} else {g_spp %>% group_by(component = get(paste0("components",threshold))) %>% summarise(spp = paste(name, collapse = ", "), n_spp = n()) %>% mutate(threshold = threshold)}
 #### LIST OF CHOROTYPES to be show ####
 #list_chorotypes = scan('clipboard')[]
-list_chorotypes = c(2:3, 5,6,8,9,10,12,13)#17,20,21,25,32,35)#c(3:6,8,9,11:16)# c(1:36)#c(6,8,9,11:23,25,28,29,31:35); # seq(1,31); #seq(17,31,1) #seq(2, 16, 2) #seq(1,15, by = 2)# c(15:25) ;# c(1:15) 
+list_chorotypes = c(2:6)#, 5,6,8,9,10,12,13)#17,20,21,25,32,35)#c(3:6,8,9,11:16)# c(1:36)#c(6,8,9,11:23,25,28,29,31:35); # seq(1,31); #seq(17,31,1) #seq(2, 16, 2) #seq(1,15, by = 2)# c(15:25) ;# c(1:15) 
 # cooking graph and map objects # 2nd main routine 
 {
 # partial g_sub
@@ -59,18 +59,18 @@ g_sub %>% activate(nodes) %>% select(name, comp = paste0('components', threshold
 } # settings
 basic_graph = 
         ggraph(lay) + 
-        geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) + #
+        geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) +
         geom_node_point(aes(fill = ifelse(!is.na(get(paste0("components",threshold))),as.factor(get(paste0("components",threshold))), NA)),
                         size =  (degree(g_sub, mode="all") + 12) / 4, shape = 21, show.legend = FALSE) + 
         scale_fill_distiller( direction = 1, palette = palette, #"Spectral",
-                              na.value = "transparent", aesthetics = "fill") + #"BrBG" , #RdYlGn","PiYG",
+                        na.value = "transparent", aesthetics = "fill") + #"BrBG" , #RdYlGn","PiYG",
         geom_node_text(aes(label = name), size = 3, col = "black", repel=TRUE) +
         labs( subtitle = paste0("Ct = ", threshold)) +
         theme_graph() 
 # add hull and community labels
 basic_graph2 = basic_graph +
-        geom_mark_hull(aes(x, y, group = get(paste0("components",threshold))
-                           ,label = get(paste0("components",threshold))),
+        geom_mark_hull(aes(x, y, group = get(paste0("components",threshold)),
+                           label = get(paste0("components",threshold))),
                        label.fontsize = 15,
                        fill = "transparent", lty = "dotted",
                        concavity = 1, 
