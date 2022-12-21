@@ -41,6 +41,9 @@ loadfonts(device = "win")
 extrafont::loadfonts(device="win")
 library(ggforce)
 
+library(shiny)
+library(shinydashboard)
+library(leaflet)
 
 
 # description: 
@@ -674,8 +677,8 @@ SCAN1 = function(graph = C,
 #         
 # } # < version without overlap assessment
 
-# SCAN_lite_in_SOURCE_SCAN_network_13.1.R
-# } # < version without overlap assessment
+# SCAN_lite ----
+# 
 SCAN_lite = 
         function(graph = C,
                  max_Ct = max(graph %>% activate(edges) %>% as_tibble %>% .$Cs),
@@ -694,7 +697,7 @@ SCAN_lite =
                 if(isTRUE(filter_overlap)) {mark_overlap = TRUE}
                 if(isTRUE(mark_overlap)) {graph = graph %>% activate(nodes) %>% mutate(no_overlap = NA)}
                 
-                #### MAIN LOOP ####
+                #### MAIN LOOP ----
                 for(threshold in seq(max_Ct,min_Ct,Ct_resolution)){
                         
                         # any species to be filtered out? (1)

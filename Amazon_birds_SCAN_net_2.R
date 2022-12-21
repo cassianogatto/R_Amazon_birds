@@ -12,9 +12,9 @@ amaz = st_read("D:/SIG2018_30GB/amazonia_sensulatissimo.shp")
 st_crs(amaz) = 4326
 
 # check column names and non-valid features
-map %>% str
+# map %>% str
 map = map %>% select(sp = "SCINAME", geometry)
-map %>% names
+# map %>% names
 
 # change CRS https://epsg.io/31985  SIRGAS 2000 25S to fix invalid features!! only way I managed to get some maps to work properly
 map = map %>% st_transform(crs = 31985)
@@ -80,6 +80,10 @@ C = C %>% as_tbl_graph(directed = FALSE)
 C = C %>% activate(edges) %>% select(from,to, Cs)
 C = C %>% activate(nodes) %>% mutate(.tidygraph_index = seq_len(n()))
 
+# backup C
+C %>% activate(nodes) %>% as_tibble() %>% write.csv2(.,"C_graph_nodes.csv")
+C %>% activate(edges) %>% as_tibble() %>% write.csv2(.,"C_graph_edges.csv")
+
 #########################
  ### SCAN network  ####
 ########################
@@ -89,18 +93,36 @@ SCANlist8981 = SCAN_lite(graph = C,       max_Ct = 0.89,    min_Ct = 0.81,    Ct
 SCANlist7971 = SCAN_lite(graph = C,       max_Ct = 0.79,    min_Ct = 0.71,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 SCANlist6961 = SCAN_lite(graph = C,       max_Ct = 0.69,    min_Ct = 0.61,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 SCANlist5953 = SCAN_lite(graph = C,       max_Ct = 0.59,    min_Ct = 0.53,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
-
 SCANlist5147 = SCAN_lite(graph = C,       max_Ct = 0.51,    min_Ct = 0.47,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 SCANlist4543 = SCAN_lite(graph = C,       max_Ct = 0.45,    min_Ct = 0.43,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 SCANlist4141 = SCAN_lite(graph = C,       max_Ct = 0.41,    min_Ct = 0.41,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 SCANlist3939 = SCAN_lite(graph = C,       max_Ct = 0.39,    min_Ct = 0.39,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
 SCANlist3737 = SCAN_lite(graph = C,       max_Ct = 0.37,    min_Ct = 0.37,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+ SCANlist3535 = SCAN_lite(graph = C,       max_Ct = 0.35,    min_Ct = 0.35,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist3333 = SCAN_lite(graph = C,       max_Ct = 0.33,    min_Ct = 0.33,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+'Time difference of 8.089723 hours' #(35 e 33)
+
+
+SCANlist3131 = SCAN_lite(graph = C,       max_Ct = 0.31,    min_Ct = 0.31,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+SCANlist2929 = SCAN_lite(graph = C,       max_Ct = 0.29,    min_Ct = 0.29,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+
+'Time difference of 11.59903 hours !!!'
+SCANlist2727 = SCAN_lite(graph = C,       max_Ct = 0.27,    min_Ct = 0.27,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+y = Sys.time()
+SCANlist2525 = SCAN_lite(graph = C,       max_Ct = 0.25,    min_Ct = 0.25,    Ct_resolution = -0.02, max_diameter = 15,  mark_overlap =TRUE)
+Sys.time() - y
+
+# updatinsession
+SCANlist2121 = list()
+SCANlist2121$chorotypes = read.csv2("2121_chorotypes.csv")
+SCANlist2121$all_spp_summary = read.csv2("2121_all_spp.summary.csv")
+SCANlist2121$all_spp = read.csv2("2121_all_spp.csv")
+SCANlist2121$graph = tbl_graph(nodes = read.csv2("2121_nodes.csv"), edges = read.csv2("2121_edges.csv"), directed = F)
+SCANlist2121$parameters = read.csv2('2121_parameters.csv')
 
 'birds is the object combining all scanned data'
 'UPDATE SCAN_lite list'
 ## functions ##
-
-
 update_graph = function(g1 = list_a$graph, g2 = list_b$graph){
         
         na = g1 %>% activate(nodes) %>% as_tibble()
@@ -155,13 +177,20 @@ bird = update_SCAN_list(list_a = bird, list_b = SCANlist4543)
 bird = update_SCAN_list(list_a = bird, list_b = SCANlist4141)
 bird = update_SCAN_list(list_a = bird, list_b = SCANlist3939)
 bird = update_SCAN_list(list_a = bird, list_b = SCANlist3737)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist3535)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist3333)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist3131)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist2929)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist2727)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist2525)
+bird = update_SCAN_list(list_a = bird, list_b = SCANlist2323)
 bird_bckup = bird
 'filtering out species already "non-overlapped" - a thousand times faster'
 #using bird
 'completing the SCAN process to low levels of congruence, removing most already analyzed and non-overlapped species...'
 #using filtered C
-current_threshold = threshold
-filter_out_spp = bird$graph %>% activate(nodes) %>% filter(!is.na(no_overlap) & (no_overlap > current_threshold)) %>% as_tibble() %>% select(name) %>% pull()
+# current_threshold = threshold
+# filter_out_spp = bird$graph %>% activate(nodes) %>% filter(!is.na(no_overlap) & (no_overlap > current_threshold)) %>% as_tibble() %>% select(name) %>% pull()
 # filter_in_spp = C %>% activate(nodes) %>% filter(!name %in% filter_out_spp) %>% as_tibble() %>% select(name) %>% pull()
 
 SCANlist3531b = SCAN_lite(graph = C %>% activate(nodes) %>% filter(!name %in% filter_out_spp), 
@@ -213,9 +242,9 @@ tab = bird$chorotypes %>% mutate(fst = first(chorotype_spp %>% strsplit(., split
 tab %>% write.csv2("Bird_chorotypes_SA_.97-.49.csv")
 chorotypes$all_spp %>% write.csv2(.,"chorotypes_all_spp_.97-.49.csv")
 
-#### SET THRESHOLD & SUBSET GRAPH ####
-g = bird$graph
 
+#### SET THRESHOLD & SUBSET GRAPH - updated in plot_graph_maps_2.R ####
+g = bird$graph
 # SETUP
 {save = FALSE; part = 1; cut = 9; select_chorotypes = TRUE; 
 device1 = 4; device2 = 5
@@ -223,8 +252,7 @@ device1 = 4; device2 = 5
 palette = "Spectral" #'Diverging', #"BrBG" , #RdYlGn","PiYG", #Diverging  BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral
 alfa_map = 0.2
 }
-##############################################################################################################################################################
-#### set threshold ####
+#  set threshold 
 threshold = 0.77; " (the threshold value chosen here must match a column defined in the SCAN object$graph)"
 {
 g_spp = g %>% activate(nodes) %>% as_tibble %>% 
@@ -244,13 +272,10 @@ g_map1 = right_join( map, g_spp, by = c('sp' = 'name')) %>%
         select(component = paste0('components',threshold), everything())
 }                                                                                       # use_sa = TRUE; # if(isTRUE(use_sa)){ g_map2 = rbind(g_map1, sa) }
 
-#### CREATE LIST OF CHOROTYPES TO BE PLOTTED ####
-# total components (chorotypes)
-
+## CREATE LIST OF CHOROTYPES TO BE PLOTTED 
 print('all_components'); all_components =  g_full %>% activate(nodes) %>% select(contains('components')) %>% pull() %>% unique(); all_components
-#### LIST OF CHOROTYPES to be show ####
+## LIST OF CHOROTYPES to be show
 list_chorotypes = c(3:5);#1:13,15:21);
-
 # cooking graph and map objects
 {
 # partial g_sub
@@ -359,7 +384,6 @@ basic_map4 = basic_map2 +
 
 
 }
-
 if(pg) {dev.set(device1); basic_graph2}
 if(pm) {dev.set(device2); basic_map4}
 
@@ -367,8 +391,9 @@ if(pm) {dev.set(device2); basic_map4}
 
 save_map_components = function(...) st_write(g_map1, paste0("map2_Ct",threshold,"_",paste0(list_chorotypes,collapse = '_'),".shp"), driver = "ESRI shapefile")
 
-#######################################################################################################################################
-# fixing issues with update_SCAN_list
+
+#### Extras, fixes, etc ####
+## fixing issues with update_SCAN_list
 gg =   bird$graph %>% activate(nodes) %>% as_tibble() # %>% select(name,contains("no_overlap")) %>% write.csv2(., "no_overlaps_cols.csv")
 gg = gg %>%  mutate(across(contains("no_overlap"), \(x) {ifelse(is.na(x), 0, x)})) %>% 
         rowwise() %>% mutate(no_overlap = max(c_across(contains("no_overlap")))) %>% ungroup() %>%
@@ -377,7 +402,6 @@ gg = gg %>%  mutate(across(contains("no_overlap"), \(x) {ifelse(is.na(x), 0, x)}
 
 g = tbl_graph(nodes = gg, edges = bird$graph %>% activate(edges) %>% as_tibble, directed = F)
 bird$graph = g
-########################
 #
 
 # basic_map3 = basic_map2 + #         scale_x_continuous(expand = exp_fact) +
@@ -396,77 +420,77 @@ bird$graph = g
 # fix duplicated names in bird$graph
 'igraph::simplify'
 
-test = graph_join(bs4543$graph,bs4543$graph)
-test = igraph::simplify(test)
-test = test %>% as_tbl_graph(directed = FALSE)
-
-g = igraph::simplify(g)
-g = g %>% as_tbl_graph(directed = FALSE)
-
-g
-g %>% activate(nodes) %>% as_tibble %>% group_by(name) %>% summarise(n = n()) %>% filter(n != 5)
-
-test = g %>% activate(nodes) %>% as_tibble %>% filter(str_detect(name, 'Amazilia'))
-
+# test = graph_join(bs4543$graph,bs4543$graph)
+# test = igraph::simplify(test)
+# test = test %>% as_tbl_graph(directed = FALSE)
+# 
+# g = igraph::simplify(g)
+# g = g %>% as_tbl_graph(directed = FALSE)
+# 
+# g
+# g %>% activate(nodes) %>% as_tibble %>% group_by(name) %>% summarise(n = n()) %>% filter(n != 5)
+# 
+# test = g %>% activate(nodes) %>% as_tibble %>% filter(str_detect(name, 'Amazilia'))
+# 
 
 'two tables to graph
 tbl_graph(charactersdf,interactionsdf, directed=F)'
 
 # get the nodes data frame and fix it
-x = seq(97,43, -2); paste0('Ct0.',x,' = any(Ct0.', x, '), components0.', x, ' =  ifelse( !all(is.na(components0.', x,')), max(components0.', x, ', na.rm=T), NA),') %>% write.table(.,'clipboard')
-nodes_ref = bird$graph %>% activate(nodes) %>% as_tibble() %>% group_by(name, .tidygraph_index) %>% summarise()
-nodes_ref %>% arrange(.tidygraph_index)
-
-
-
-nodes = bird$graph %>% activate(nodes) %>% as_tibble() %>% group_by(name, .tidygraph_index) %>% 
-        summarise(  no_overlap = max(no_overlap), #%>% filter(!is.na(no_overlap))
-                   Ct0.97 = any(Ct0.97), components0.97 =  ifelse( !all(is.na(components0.97)), max(components0.97, na.rm=T), NA),
-                   Ct0.95 = any(Ct0.95), components0.95 =  ifelse( !all(is.na(components0.95)), max(components0.95, na.rm=T), NA),
-                   Ct0.93 = any(Ct0.93), components0.93 =  ifelse( !all(is.na(components0.93)), max(components0.93, na.rm=T), NA),
-                   Ct0.91 = any(Ct0.91), components0.91 =  ifelse( !all(is.na(components0.91)), max(components0.91, na.rm=T), NA),
-                   Ct0.89 = any(Ct0.89), components0.89 =  ifelse( !all(is.na(components0.89)), max(components0.89, na.rm=T), NA),
-                   Ct0.87 = any(Ct0.87), components0.87 =  ifelse( !all(is.na(components0.87)), max(components0.87, na.rm=T), NA),
-                   Ct0.85 = any(Ct0.85), components0.85 =  ifelse( !all(is.na(components0.85)), max(components0.85, na.rm=T), NA),
-                   Ct0.83 = any(Ct0.83), components0.83 =  ifelse( !all(is.na(components0.83)), max(components0.83, na.rm=T), NA),
-                   Ct0.81 = any(Ct0.81), components0.81 =  ifelse( !all(is.na(components0.81)), max(components0.81, na.rm=T), NA),
-                   Ct0.79 = any(Ct0.79), components0.79 =  ifelse( !all(is.na(components0.79)), max(components0.79, na.rm=T), NA),
-                   Ct0.77 = any(Ct0.77), components0.77 =  ifelse( !all(is.na(components0.77)), max(components0.77, na.rm=T), NA),
-                   Ct0.75 = any(Ct0.75), components0.75 =  ifelse( !all(is.na(components0.75)), max(components0.75, na.rm=T), NA),
-                   Ct0.73 = any(Ct0.73), components0.73 =  ifelse( !all(is.na(components0.73)), max(components0.73, na.rm=T), NA),
-                   Ct0.71 = any(Ct0.71), components0.71 =  ifelse( !all(is.na(components0.71)), max(components0.71, na.rm=T), NA),
-                   Ct0.69 = any(Ct0.69), components0.69 =  ifelse( !all(is.na(components0.69)), max(components0.69, na.rm=T), NA),
-                   Ct0.67 = any(Ct0.67), components0.67 =  ifelse( !all(is.na(components0.67)), max(components0.67, na.rm=T), NA),
-                   Ct0.65 = any(Ct0.65), components0.65 =  ifelse( !all(is.na(components0.65)), max(components0.65, na.rm=T), NA),
-                   Ct0.63 = any(Ct0.63), components0.63 =  ifelse( !all(is.na(components0.63)), max(components0.63, na.rm=T), NA),
-                   Ct0.61 = any(Ct0.61), components0.61 =  ifelse( !all(is.na(components0.61)), max(components0.61, na.rm=T), NA),
-                   Ct0.59 = any(Ct0.59), components0.59 =  ifelse( !all(is.na(components0.59)), max(components0.59, na.rm=T), NA),
-                   Ct0.57 = any(Ct0.57), components0.57 =  ifelse( !all(is.na(components0.57)), max(components0.57, na.rm=T), NA),
-                   Ct0.55 = any(Ct0.55), components0.55 =  ifelse( !all(is.na(components0.55)), max(components0.55, na.rm=T), NA),
-                   Ct0.53 = any(Ct0.53), components0.53 =  ifelse( !all(is.na(components0.53)), max(components0.53, na.rm=T), NA),
-                   Ct0.51 = any(Ct0.51), components0.51 =  ifelse( !all(is.na(components0.51)), max(components0.51, na.rm=T), NA),
-                   Ct0.49 = any(Ct0.49), components0.49 =  ifelse( !all(is.na(components0.49)), max(components0.49, na.rm=T), NA),
-                   Ct0.47 = any(Ct0.47), components0.47 =  ifelse( !all(is.na(components0.47)), max(components0.47, na.rm=T), NA),
-                   Ct0.45 = any(Ct0.45), components0.45 =  ifelse( !all(is.na(components0.45)), max(components0.45, na.rm=T), NA),
-                   Ct0.43 = any(Ct0.43), components0.43 =  ifelse( !all(is.na(components0.43)), max(components0.43, na.rm=T), NA))
-
-'edges' # explorations show that is edges is a mess - I'll abandon Ct info at edges and use the original C edges with Cs between spp
-# edges = bird$graph %>% activate(edges) %>% as_tibble() 
-# edges %>% group_by(from) %>% summarise()
 # x = seq(97,43, -2); paste0('Ct0.',x,' = any(Ct0.', x, '), components0.', x, ' =  ifelse( !all(is.na(components0.', x,')), max(components0.', x, ', na.rm=T), NA),') %>% write.table(.,'clipboard')
+# nodes_ref = bird$graph %>% activate(nodes) %>% as_tibble() %>% group_by(name, .tidygraph_index) %>% summarise()
+# nodes_ref %>% arrange(.tidygraph_index)
 # 
-# edges %>% group_by(from) %>% summarise(mm = max(Ct0.49)) %>% filter(!is.na(mm))
 # 
-# bird$graph %>% activate(edges) %>% as_tibble()
-
-'g = igraph::simplify(g)
-g = g %>% as_tbl_graph(directed = FALSE)'
-
-'edges = C %>% activate(edges) %>% as_tibble()
-
-birdgraph = tbl_graph(nodes,edges, directed=F)'
+# 
+# nodes = bird$graph %>% activate(nodes) %>% as_tibble() %>% group_by(name, .tidygraph_index) %>% 
+#         summarise(  no_overlap = max(no_overlap), #%>% filter(!is.na(no_overlap))
+#                    Ct0.97 = any(Ct0.97), components0.97 =  ifelse( !all(is.na(components0.97)), max(components0.97, na.rm=T), NA),
+#                    Ct0.95 = any(Ct0.95), components0.95 =  ifelse( !all(is.na(components0.95)), max(components0.95, na.rm=T), NA),
+#                    Ct0.93 = any(Ct0.93), components0.93 =  ifelse( !all(is.na(components0.93)), max(components0.93, na.rm=T), NA),
+#                    Ct0.91 = any(Ct0.91), components0.91 =  ifelse( !all(is.na(components0.91)), max(components0.91, na.rm=T), NA),
+#                    Ct0.89 = any(Ct0.89), components0.89 =  ifelse( !all(is.na(components0.89)), max(components0.89, na.rm=T), NA),
+#                    Ct0.87 = any(Ct0.87), components0.87 =  ifelse( !all(is.na(components0.87)), max(components0.87, na.rm=T), NA),
+#                    Ct0.85 = any(Ct0.85), components0.85 =  ifelse( !all(is.na(components0.85)), max(components0.85, na.rm=T), NA),
+#                    Ct0.83 = any(Ct0.83), components0.83 =  ifelse( !all(is.na(components0.83)), max(components0.83, na.rm=T), NA),
+#                    Ct0.81 = any(Ct0.81), components0.81 =  ifelse( !all(is.na(components0.81)), max(components0.81, na.rm=T), NA),
+#                    Ct0.79 = any(Ct0.79), components0.79 =  ifelse( !all(is.na(components0.79)), max(components0.79, na.rm=T), NA),
+#                    Ct0.77 = any(Ct0.77), components0.77 =  ifelse( !all(is.na(components0.77)), max(components0.77, na.rm=T), NA),
+#                    Ct0.75 = any(Ct0.75), components0.75 =  ifelse( !all(is.na(components0.75)), max(components0.75, na.rm=T), NA),
+#                    Ct0.73 = any(Ct0.73), components0.73 =  ifelse( !all(is.na(components0.73)), max(components0.73, na.rm=T), NA),
+#                    Ct0.71 = any(Ct0.71), components0.71 =  ifelse( !all(is.na(components0.71)), max(components0.71, na.rm=T), NA),
+#                    Ct0.69 = any(Ct0.69), components0.69 =  ifelse( !all(is.na(components0.69)), max(components0.69, na.rm=T), NA),
+#                    Ct0.67 = any(Ct0.67), components0.67 =  ifelse( !all(is.na(components0.67)), max(components0.67, na.rm=T), NA),
+#                    Ct0.65 = any(Ct0.65), components0.65 =  ifelse( !all(is.na(components0.65)), max(components0.65, na.rm=T), NA),
+#                    Ct0.63 = any(Ct0.63), components0.63 =  ifelse( !all(is.na(components0.63)), max(components0.63, na.rm=T), NA),
+#                    Ct0.61 = any(Ct0.61), components0.61 =  ifelse( !all(is.na(components0.61)), max(components0.61, na.rm=T), NA),
+#                    Ct0.59 = any(Ct0.59), components0.59 =  ifelse( !all(is.na(components0.59)), max(components0.59, na.rm=T), NA),
+#                    Ct0.57 = any(Ct0.57), components0.57 =  ifelse( !all(is.na(components0.57)), max(components0.57, na.rm=T), NA),
+#                    Ct0.55 = any(Ct0.55), components0.55 =  ifelse( !all(is.na(components0.55)), max(components0.55, na.rm=T), NA),
+#                    Ct0.53 = any(Ct0.53), components0.53 =  ifelse( !all(is.na(components0.53)), max(components0.53, na.rm=T), NA),
+#                    Ct0.51 = any(Ct0.51), components0.51 =  ifelse( !all(is.na(components0.51)), max(components0.51, na.rm=T), NA),
+#                    Ct0.49 = any(Ct0.49), components0.49 =  ifelse( !all(is.na(components0.49)), max(components0.49, na.rm=T), NA),
+#                    Ct0.47 = any(Ct0.47), components0.47 =  ifelse( !all(is.na(components0.47)), max(components0.47, na.rm=T), NA),
+#                    Ct0.45 = any(Ct0.45), components0.45 =  ifelse( !all(is.na(components0.45)), max(components0.45, na.rm=T), NA),
+#                    Ct0.43 = any(Ct0.43), components0.43 =  ifelse( !all(is.na(components0.43)), max(components0.43, na.rm=T), NA))
+# 
+# 'edges' # explorations show that is edges is a mess - I'll abandon Ct info at edges and use the original C edges with Cs between spp
+# # edges = bird$graph %>% activate(edges) %>% as_tibble() 
+# # edges %>% group_by(from) %>% summarise()
+# # x = seq(97,43, -2); paste0('Ct0.',x,' = any(Ct0.', x, '), components0.', x, ' =  ifelse( !all(is.na(components0.', x,')), max(components0.', x, ', na.rm=T), NA),') %>% write.table(.,'clipboard')
+# # 
+# # edges %>% group_by(from) %>% summarise(mm = max(Ct0.49)) %>% filter(!is.na(mm))
+# # 
+# # bird$graph %>% activate(edges) %>% as_tibble()
+# 
+# 'g = igraph::simplify(g)
+# g = g %>% as_tbl_graph(directed = FALSE)'
+# 
+# 'edges = C %>% activate(edges) %>% as_tibble()
+# 
+# birdgraph = tbl_graph(nodes,edges, directed=F)'
 
 jesussaves = function(){
         print("Gees is saving this bullshit!!!")
-        save.image("C:/Users/cassiano/hubic/Amazon_birds/.RData")}
+        save.image("C:/Users/cassiano/hubic/Amazon_birds/R_Amazon_birds.RData")}
 
