@@ -22,28 +22,27 @@ the exact Ct the chorotype gains no-overlapping species'
 " Tidygraph has a problem: it does not recognizes the option delete.vertices, as in igraph original function;
 to_subgraph, here, addresses and fixes this problem"
 
-library(ggplot2)
-library(ggforce)
 # library(tidyverse)
 library(dplyr)
 library(igraph)
 library(tidygraph)
 library(ggraph)
+library(ggplot2)
+library(ggforce)
 library(readr)
 library(sf)
-library(dplyr,warn.conflicts = FALSE)
+# library(dplyr,warn.conflicts = FALSE)
 # to silence dplyr group_by + summarize  .groups options ("drop_last", "drop", "keep", "rowwise")  # see: https://stackoverflow.com/questions/62140483/how-to-interpret-dplyr-message-summarise-regrouping-output-by-x-override/62140681
-options(dplyr.summarise.inform=F)
-library(ggplot2)
-# to avoid graphical warning about fonts
+
+# trying to avoid graphical warning about fonts
 library(extrafont)
 loadfonts(device = "win")
 extrafont::loadfonts(device="win")
-library(ggforce)
 
-library(shiny)
-library(shinydashboard)
-library(leaflet)
+
+# library(shiny)
+# library(shinydashboard)
+# library(leaflet)
 
 
 # description: 
@@ -54,23 +53,7 @@ partial_components =
                 filter_depth = FALSE, 
                 filter_overlap = FALSE, ...){
         print("using 'igraph::group_components' - see more options of community structurig in '?group_components'")
-        # if(isTRUE(filter_overlap) & isTRUE(filter_diameter)){
-        #         
-        #         filter = (Cs >= threshold & is.na(.N()$no_overlap[from]) & is.na(.N()$filter[from]))
-        #         
-        # } else {
-        #         
-        #         if(isTRUE(filter_overlap)){ filter = (Cs >= threshold & is.na(.N()$no_overlap[from]))
-        #                 
-        #         } else {
-        #                 
-        #                 if(isTRUE(filter_diameter)){ filter = (Cs >= threshold & is.na(.N()$filter[from]))
-        #                 
-        #                 } else{ filter  = Cs >= threshold
-        #                 
-        #  }       }        }
-        # <- trying to make code shorter with a filter        
-                
+        
         if(isTRUE(filter_overlap) & isTRUE(filter_diameter)) { graph %>% morph(to_subgraph, subset_by = "edges", 
                               (Cs >= threshold & is.na(.N()$no_overlap[from]) & is.na(.N()$filter[from])), # check the node respective to the 'from' edge table
                               remove_multiples = TRUE, delete.vertices= TRUE) %>% 

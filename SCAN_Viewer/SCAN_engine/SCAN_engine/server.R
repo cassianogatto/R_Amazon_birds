@@ -287,6 +287,7 @@ shinyServer(function(input,output,session){
         }
     }
     
+    
     map <- eventReactive(input$get_map,{
         
         shpdf <- input$filemap
@@ -320,6 +321,7 @@ shinyServer(function(input,output,session){
         
             sf_use_s2(FALSE)
             
+            # which pairs of species really overlap?
             overlapping <- st_intersects(map(), map(), sparse = F) |> as_tibble() |> 
                 
                 setNames(map()$sp) |> mutate(sp1 = map()$sp) |> select(sp1, everything()) |> 
@@ -328,19 +330,21 @@ shinyServer(function(input,output,session){
                 
                 filter(!duplicated(paste0(pmax(sp1, sp2), pmin(sp1, sp2))))
                 
-            
+            # areas of species and overlaps
             areas <- overlap_areas_function(tab_species = overlapping, map = map())
-
-            Cs_calc <- areas |> mutate(Cs = #units::drop_units(
-                                           (area_overlap / area_sp1) * (area_overlap / area_sp2))#)
+            
+            # apply Cs Index
+            Cs_calc <- areas |> mutate(Cs = (area_overlap / area_sp1) * (area_overlap / area_sp2))
 
             Cs_calc <- Cs_calc |> filter(Cs >= 0.01) |> select(sp1,sp2, Cs) |> arrange(desc(Cs)) |> mutate(Cs = round(Cs, 3))
+            
+            #if(!is.null(filter_Cs)){  Cs_calc <- Cs_calc |> filter(Cs > input$filter_Cs)}
 
             Cs_calc
             
     })
     
-    Cs_up <- reactive({#input$Cs_upload_csv, {
+    Cs_up <- reactive({
         
             req(input$Cs_table)
             
@@ -348,41 +352,22 @@ shinyServer(function(input,output,session){
             
             Cs_upload <- read.csv(Cs_file$datapath, header = TRUE) |> as_tibble() |> select(sp1,sp2,Cs)
             
+            #if(!is.null(filter_Cs)){  Cs_upload <- Cs_upload |> filter(Cs > input$filter_Cs)}
+            
             return(Cs_upload)
     })
     
-    # NOT WORKING THIS Cs 
-    
-    Cs <- reactive( {  #nrow(Cs_calc()) > 0 | nrow(Cs_up()) > 0 , {
+    Cs <- reactive( {
         
         if(isTRUE(input$Cs_upload_csv)) { return( Cs_up() )   } else {  return( Cs_calc() )  }
-          
     })
     
-    output$check_Cs_tables <- renderText(             #if(input$calculate_Cs) {  return( paste("A", "input$calculate_Cs", input$calculate_Cs, nrow(Cs_cal) ) ) }
     
-        paste( unlist(Cs() |> names() ) , ", with", nrow(Cs()), "rows" )
-        
-        # if(isTRUE(input$Cs_upload_csv) & (!is.null(input$Cs_table))) {
-        # 
-        #     return( paste(unlist(input$Cs_table$name), ", with", nrow(Cs_up()), "rows" ) )
-        # 
-        # } else {
-        # 
-        #     if(input$calculate_Cs != 0 ){
-        # 
-        #         return( paste(Cs_calc() |> names() , ", with", nrow(Cs_calc()), "rows" ) )
-        #     }
-        # }
-    )
+    output$check_Cs_tables <- renderText(  paste( ncol(Cs()), "columns:" , paste(Cs() |> names()), paste(", with", nrow(Cs()), "rows" )) )
     
     output$Cs_head <- renderTable(   Cs() |> head()  )
         
-        # if(isTRUE(input$Cs_upload_csv) & (!is.null(input$Cs_table))) { return(Cs_up() |> head()) } else {  Cs_calc() |> head()  }   )
-    
-    output$Cs_tail <- renderTable(   Cs() |> tail() )
-        
-        # if(isTRUE(input$Cs_upload_csv) & (!is.null(input$Cs_table))) { return(Cs_up() |> tail())  } else { Cs_calc() |> tail()   }  )
+    output$Cs_tail <- renderTable(   Cs() |> tail()  )
         
     output$download_Cs <- downloadHandler(
         
@@ -401,9 +386,6 @@ shinyServer(function(input,output,session){
         
         } else {  map()[,] |> plot(col = sf.colors(categorical = TRUE, alpha = 0.5)) }   )
     
-    # output$Cs_table <- renderTable({ Cs() |> head()  })
-    
-    # >>> 
     
     graph <- reactive({
 
@@ -412,262 +394,214 @@ shinyServer(function(input,output,session){
         graph <- graph %>% igraph::simplify(remove.multiple = TRUE, remove.loops = FALSE, edge.attr.comb="first")
 
         graph <- graph %>% as_tbl_graph(directed = FALSE)
+    })
+    
 
+    output$graph_nodes <- renderTable(  graph() |> activate(nodes) |> as_tibble() |> head() )
+    
+    output$graph_edges <- renderTable(  graph() |> activate(edges) |> as_tibble() |> head() )
+    
+    
+    SCANlist <- eventReactive( input$run_scan, {
+
+        SCANlist <- SCAN_lite(
+            graph = graph(),
+            max_Ct =  input$threshold_max,
+            min_Ct =  input$threshold_min,
+            Ct_resolution =  input$resolution,
+            max_diameter = input$max_diameter,
+            mark_overlap = input$overlap,
+            filter_overlap = input$overlap
+        )
+
+        SCANlist[['graph_nodes']] <- SCANlist[['graph']] |> activate(nodes) |> as_tibble()
+
+        SCANlist[['graph_edges']] <- SCANlist[['graph']] |> activate(edges) |> as_tibble()
+
+        SCANlist
+    })
+    
+    
+    output$scan_chorotypes <- renderTable( SCANlist()[['chorotypes']] |> arrange(desc(Ct_max)))
+    
+    output$parameters <- renderTable({   SCANlist()[['parameters']]  })
+
+    # DOWNLOAD
+    output$names_scan_list <- renderUI({   names <- names(SCANlist())
+
+        selectInput(inputId = "scan_data_to_download", label = "Choose a dataset to download (preview belo)", choices = names[names != "graph"] )
     })
 
-    
-    # output$test_graph <- renderTable(  graph() |> activate(nodes) |> as_tibble()  )
-    output$graph_nodes <- renderTable(  graph() |> activate(nodes) |> as_tibble() |> head() )
-    output$graph_edges <- renderTable( graph() |> activate(edges) |> as_tibble() |> head() )
-    # 
-    # SCANlist <- eventReactive( input$run_scan, {
-    #     
-    #     SCANlist <- SCAN_lite(
-    #         graph = graph(),
-    #         max_Ct =  input$threshold_min_max[2],
-    #         min_Ct =  input$threshold_min_max[1],
-    #         Ct_resolution =  input$resolution,
-    #         max_diameter = input$max_diameter,
-    #         mark_overlap = input$overlap,
-    #         filter_overlap = input$overlap
-    #     )
-    #     
-    #     SCANlist[['graph_nodes']] <- SCANlist[['graph']] |> activate(nodes) |> as_tibble()
-    #     
-    #     SCANlist[['graph_edges']] <- SCANlist[['graph']] |> activate(edges) |> as_tibble()
-    #     
-    #     SCANlist
-    # })
-    # 
-    # output$scan_chorotypes <- renderTable( SCANlist()[['chorotypes']] )
-    # 
-    # 
-    # 
-    # output$parameters <- renderTable({   SCANlist()[['parameters']]  })
-    # 
-    # # select download
-    # output$names_scan_list <- renderUI({
-    #     
-    #     names <- names(SCANlist())
-    #     
-    #     selectInput(inputId = "dataset", label = "Choose a dataset to download (preview belo)", 
-    #                 choices = names[names != "graph"] )
-    # })
-    # 
-    # # Reactive value for selected dataset ----
-    # datasetInput <- reactive({
-    #     
-    #     switch(input$dataset,
-    #            
-    #            "chorotypes" = SCANlist()[['chorotypes']],
-    #            "all_spp_summary" = SCANlist()[['all_spp_summary']],
-    #            "all_spp" = SCANlist()[['all_spp']],
-    #            # "graph" = cat('choose nodes or edges to save a csv'),
-    #            "graph_nodes" = SCANlist()[['graph_nodes']],
-    #            "graph_edges" = SCANlist()[['graph_edges']]
-    #     )
-    # })
-    # 
-    # # Table of selected dataset ---- # https://shiny.rstudio.com/articles/download.html
-    # output$table <- renderDataTable({
-    #     ifelse(input$dataset == 'graph_edges', output <- datasetInput() |> head(), output <- datasetInput()  )
-    #     
-    #     output
-    # })
-    # 
-    # # Downloadable csv of selected dataset ----
-    # output$downloadData <- downloadHandler(
-    #     
-    #     filename = function() { paste(input$dataset, ".csv", sep = "")  },
-    #     
-    #     content = function(file) {  write.csv(datasetInput(), file, row.names = FALSE)    }
-    # )
-    # 
-    # # viewer v1,1
-    # 
-    # threshold <- reactive({   input$threshold   })
-    # 
-    # g_full <- reactive({    
-    #     
-    #     if(!isTRUE(input$graph_or_csv)){
-    #         # get an object from environment
-    #         # get(input$g) %>% .[['graph']] %>% activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold()) %>% 
-    #         #     activate(nodes) %>% filter(!is.na(get(paste0("components",threshold())))) %>% 
-    #         #     select(name, comps = paste0('components',threshold())) %>% arrange(comps, name)
-    #         
-    #         # here trying to use switch to choose among possible objects - did not work
-    #         # switch(input$graph, "SCANlist" = SCANlist()[['graph']])
-    #         # input$graph
-    #         
-    #         g_full <- SCANlist()[['graph']]
-    #         
-    #     } else {
-    #         
-    #         node_file <- input$graph_nodes
-    #         nodes <- read.csv(node_file$datapath, header = TRUE)
-    #         
-    #         edge_file <- input$graph_edges
-    #         edges <- read.csv(edge_file$datapath, header = TRUE)
-    #         
-    #         g <- tbl_graph(nodes = nodes, edges = edges, directed = F)
-    #         
-    #         g <- g %>% 
-    #             activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold()) %>% 
-    #             activate(nodes) %>% filter(!is.na(get(paste0("components",threshold())))) %>% 
-    #             select(name, comps = paste0('components',threshold())) %>% arrange(comps, name)
-    #         
-    #         g
-    #         
-    #     }
-    # })
-    # 
-    # original_components <- reactive({
-    #     
-    #     g_full() %>% activate(nodes) %>%  select(comps) %>%
-    #         arrange(comps) %>% pull() %>% unique()
-    # })
-    # 
-    # g_sub <- reactive({
-    #     
-    #     g_sub <- g_full() %>% activate(nodes) %>%
-    #         filter(comps %in% input$selected_components)
-    #     
-    #     g_sub
-    # })
-    # 
-    # g_map <- reactive({
-    #     
-    #     g_spp <- g_sub() |> activate(nodes) |> as_tibble()
-    #     
-    #     g_map1 <- right_join( map(), g_spp, by = c('sp' = 'name')) %>% select(comps, everything())
-    #     
-    #     # g_map1 |> st_transform(crs = 4326)
-    # })
-    # 
-    # pal <- reactive({ colorFactor(  palette = input$palette, domain = original_components()) })
-    # 
-    # output$original_components <- renderUI({
-    #     
-    #     components<- original_components()
-    #     
-    #     checkboxGroupInput("selected_components", paste("Choose the chorotypes at Ct =", threshold() ) , components, inline = TRUE, selected = NULL) #ifelse(input$select_all_components == TRUE,components, NULL )) #components ) #try ifelse later  ifelse(input$select_all_components == 1, components, NULL)  to select all - but did not work
-    # })
-    # 
-    # output$g_sub_table <- renderDataTable({  
-    #     
-    #     g_sub() |> activate(nodes) |> as_tibble() |> 
-    #         
-    #         group_by(comps) |> summarise(n_spp = n(), species = paste0(name, collapse = ','))
-    # })
-    # 
-    # output$map_plot <- renderLeaflet({
-    #     
-    #     # pal <- colorFactor(input$palette, domain = original_components() )#colorBin(input$palette, domain = original_components() ) #input$selected_components)# colorNumeric # pal <- colorBin(input$palette, domain = original_components(), bins = 7)
-    #     
-    #     # labels <- sprintf("%s %s", g_map$comps, g_map$sp) %>% lapply(htmltools::HTML)   # %s use the first 'string'
-    #     
-    #     # leaflet
-    #     g_map() |> leaflet() |> addTiles() |>
-    #         addPolygons(
-    #             weight = 1,
-    #             fillColor = ~ pal()(comps),
-    #             color = "black", dashArray = "1",
-    #             fillOpacity = input$map_alpha
-    #             # highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
-    #         ) # %>% leaflet::addLegend(  pal = pal, values = ~comps,  opacity = 0.7, title = "Chorotypes" )
-    # })
-    # 
-    # output$ggplot_map <- renderPlot({
-    #     ggplot(data = g_map() %>% arrange(comps)) + 
-    #         geom_sf( aes(fill = comps), # THIS IFELSE STAT. TURNS FILL TO CONTINUOUS... use distiller, otherwise scale_fill_brewer to discrete palette
-    #                  alpha = input$map_alpha, color = 'black', show.legend = F) + 
-    #         # geom_sf(data = sa, fill = NA, color = 'black') +
-    #         scale_fill_distiller( direction = 1, palette =   input$palette, na.value = "transparent", aesthetics = "fill") + #start = 0.2, end = 0.8, #Diverging  BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral
-    #         # scale_fill_continuous(values = palette(g_map$comps)) + 
-    #         ggtitle(paste0("Ct = ", threshold()), sub = paste('components:', input$selected_components)) + # pull() %>% unique())) + 
-    #         theme_minimal() 
-    # })
-    # 
-    # output$graph_plot <- renderPlot({
-    #     
-    #     lay <- create_layout(g_sub(), layout = input$layout)      # lou <- cluster_louvain(g_sub) hmmm there are other options to graph building...
-    #     ggraph(lay) +
-    #         geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) +
-    #         geom_node_point(aes(fill = comps), # how to synchronize with palette used in MAP? ~pal ??
-    #                         size =  (degree(g_sub(), mode="all") + 20) / 4, shape = 21, show.legend = FALSE) +
-    #         scale_fill_distiller( direction = 1, palette = input$palette, na.value = "transparent", aesthetics = "fill") +
-    #         # scale_fill_manual(values = pal(as.factor(comps))) +
-    #         # scale_fill_brewer (values = palette()(comps) ) +
-    #         geom_node_text(aes(label = name), size = 4, col = "black", repel=TRUE) +
-    #         labs( subtitle = paste0("Ct = ", threshold() )) +
-    #         theme_graph()
-    #     
-    #     # tring to implementate hulls showing groups... not succesfull
-    #     # basic_graph2 <-  basic_graph1 + geom_mark_hull(aes(x, y, group = comps), label = comps, label.fontsize = 15, fill = "transparent", lty = "dotted", concavity = 1, expand = unit(3, "mm"), alpha = 0.05) + theme(legend.position = "none")
-    # })
-    # 
-    # output$graph_plot2 <- renderPlot({
-    #     
-    #     lay <- create_layout(g_sub(), layout = input$layout)      # lou <- cluster_louvain(g_sub) hmmm there are other options to graph building...
-    #     
-    #     #
-    #     #basic_graph <- 
-    #     
-    #     ggraph(lay) +
-    #         
-    #         geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) +
-    #         
-    #         geom_node_point(aes(fill = comps), # how to synchronize with palette used in MAP? ~pal ??
-    #                         size =  (degree(g_sub(), mode="all") + 10) / 4, shape = 21, show.legend = FALSE) +
-    #         
-    #         scale_fill_distiller( direction = 1, palette = input$palette, na.value = "transparent", aesthetics = "fill") +
-    #         # scale_fill_manual(values = pal(as.numeric(comps))) +
-    #         # scale_fill_continuous(palette = input$palette, na.value = "transparent", values = pal()(comps)  ) +
-    #         geom_node_text(aes(label = name), size = 4, col = "black", repel=TRUE) +
-    #         
-    #         labs( subtitle = paste0("Ct = ", threshold() )) +
-    #         
-    #         theme_graph()
-    #     
-    # })
+    dataset_SCAN_ouput <- reactive({
+
+        switch(input$scan_data_to_download,
+                                "chorotypes" = SCANlist()[['chorotypes']],
+                                "all_spp_summary" = SCANlist()[['all_spp_summary']],
+                                "all_spp" = SCANlist()[['all_spp']],
+                                "graph_nodes" = SCANlist()[['graph_nodes']],
+                                "graph_edges" = SCANlist()[['graph_edges']]
+        )
+    }) # Reactive selected dataset ----
+
+    # Downloadable csv of selected dataset ----# https://shiny.rstudio.com/articles/download.html
+    output$downloadData <- downloadHandler(
+
+        filename = function() { paste(input$scan_data_to_download, ".csv", sep = "")  },
+
+        content = function(file) {  write.csv(dataset_SCAN_ouput(), file, row.names = FALSE)    }
+    )
+
+    output$table_download_preview <- renderDataTable({  return( dataset_SCAN_ouput() )   })# |> head() 
+
+    # viewer v1,1
+
+    threshold <- reactive({   input$threshold   })
+
+    g_full <- reactive({
+
+        if(!isTRUE(input$graph_from_csv)){
+            
+            g <- SCANlist()[['graph']]
+            
+            g <- g  |>  activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold()) %>%
+                activate(nodes) %>% filter(!is.na(get(paste0("components",threshold())))) %>%
+                select( name, comps = paste0('components', threshold() ) ) %>% arrange(comps, name)
+            # get an object from environment
+            # get(input$g) %>% .[['graph']] %>% activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold()) %>%
+            #     activate(nodes) %>% filter(!is.na(get(paste0("components",threshold())))) %>%
+            #     select(name, comps = paste0('components',threshold())) %>% arrange(comps, name)
+            return(g)
+
+        } else {     
+            
+            node_file <- input$graph_nodes
+            nodes <- read.csv(node_file$datapath, header = TRUE)
+            
+            edge_file <- input$graph_edges
+            edges <- read.csv(edge_file$datapath, header = TRUE)
+            
+            g <- tbl_graph(nodes = nodes, edges = edges, directed = F)
+            
+            g <- g  |>  activate(edges) %>% select(from, to, Cs) %>%  filter(Cs >= threshold()) %>%
+                activate(nodes) %>% filter(!is.na(get(paste0("components",threshold())))) %>%
+                select( name, comps = paste0('components', threshold() ) ) %>% arrange(comps, name)
+        
+            return(g)
+        }
+    })
+
+    original_components <- reactive({
+
+        g_full() %>% activate(nodes) %>%  select(comps) %>%
+            arrange(comps) %>% pull() %>% unique()
+    })
+
+    g_sub <- reactive({
+
+        g_sub <- g_full() %>% activate(nodes) %>%
+            filter(comps %in% input$selected_components)
+
+        g_sub
+    })
+
+    g_map <- reactive({
+
+        g_spp <- g_sub() |> activate(nodes) |> as_tibble()
+
+        g_map1 <- right_join( map(), g_spp, by = c('sp' = 'name')) %>% select(comps, everything())
+
+        # g_map1 |> st_transform(crs = 4326)
+    })
+
+    pal <- reactive({ colorFactor(  palette = input$palette, domain = original_components()) })
+
+    output$original_components <- renderUI({
+
+        components<- original_components()
+
+        checkboxGroupInput("selected_components", paste("Choose the chorotypes at Ct =", threshold() ) , components, inline = TRUE, selected = NULL) #ifelse(input$select_all_components == TRUE,components, NULL )) #components ) #try ifelse later  ifelse(input$select_all_components == 1, components, NULL)  to select all - but did not work
+    })
+
+    output$g_sub_table <- renderDataTable({
+
+        g_sub() |> activate(nodes) |> as_tibble() |>
+
+            group_by(comps) |> summarise(n_spp = n(), species = paste0(name, collapse = ','))
+    })
+
+    output$map_plot <- renderLeaflet({
+
+        # pal <- colorFactor(input$palette, domain = original_components() )#colorBin(input$palette, domain = original_components() ) #input$selected_components)# colorNumeric # pal <- colorBin(input$palette, domain = original_components(), bins = 7)
+
+        # labels <- sprintf("%s %s", g_map$comps, g_map$sp) %>% lapply(htmltools::HTML)   # %s use the first 'string'
+
+        # leaflet
+        g_map() |> leaflet() |> addTiles() |>
+            addPolygons(
+                weight = 1,
+                fillColor = ~ pal()(comps),
+                color = "black", dashArray = "1",
+                fillOpacity = input$map_alpha
+                # highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
+            ) # %>% leaflet::addLegend(  pal = pal, values = ~comps,  opacity = 0.7, title = "Chorotypes" )
+    })
+
+    output$ggplot_map <- renderPlot({
+        ggplot(data = g_map() %>% arrange(comps)) +
+            geom_sf( aes(fill = comps), # THIS IFELSE STAT. TURNS FILL TO CONTINUOUS... use distiller, otherwise scale_fill_brewer to discrete palette
+                     alpha = input$map_alpha, color = 'black', show.legend = F) +
+            # geom_sf(data = sa, fill = NA, color = 'black') +
+            scale_fill_distiller( direction = 1, palette =   input$palette, na.value = "transparent", aesthetics = "fill") + #start = 0.2, end = 0.8, #Diverging  BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral
+            # scale_fill_continuous(values = palette(g_map$comps)) +
+            ggtitle(paste0("Ct = ", threshold()), sub = paste('components:', input$selected_components)) + # pull() %>% unique())) +
+            theme_minimal()
+    })
+
+    output$graph_plot <- renderPlot({
+
+        lay <- create_layout(g_sub(), layout = input$layout)      # lou <- cluster_louvain(g_sub) hmmm there are other options to graph building...
+        ggraph(lay) +
+            geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) +
+            geom_node_point(aes(fill = comps), # how to synchronize with palette used in MAP? ~pal ??
+                            size =  (degree(g_sub(), mode="all") + 20) / 4, shape = 21, show.legend = FALSE) +
+            scale_fill_distiller( direction = 1, palette = input$palette, na.value = "transparent", aesthetics = "fill") +
+            # scale_fill_manual(values = pal(as.factor(comps))) +
+            # scale_fill_brewer (values = palette()(comps) ) +
+            geom_node_text(aes(label = name), size = 4, col = "black", repel=TRUE) +
+            labs( subtitle = paste0("Ct = ", threshold() )) +
+            theme_graph()
+
+        # tring to implementate hulls showing groups... not succesfull
+        # basic_graph2 <-  basic_graph1 + geom_mark_hull(aes(x, y, group = comps), label = comps, label.fontsize = 15, fill = "transparent", lty = "dotted", concavity = 1, expand = unit(3, "mm"), alpha = 0.05) + theme(legend.position = "none")
+    })
+
+    output$graph_plot2 <- renderPlot({
+
+        lay <- create_layout(g_sub(), layout = input$layout)      # lou <- cluster_louvain(g_sub) hmmm there are other options to graph building...
+
+        #
+        #basic_graph <-
+
+        ggraph(lay) +
+
+            geom_edge_link(aes(alpha = (Cs+0.75)) , width = 1.25 , show.legend = FALSE) +
+
+            geom_node_point(aes(fill = comps), # how to synchronize with palette used in MAP? ~pal ??
+                            size =  (degree(g_sub(), mode="all") + 10) / 4, shape = 21, show.legend = FALSE) +
+
+            scale_fill_distiller( direction = 1, palette = input$palette, na.value = "transparent", aesthetics = "fill") +
+            # scale_fill_manual(values = pal(as.numeric(comps))) +
+            # scale_fill_continuous(palette = input$palette, na.value = "transparent", values = pal()(comps)  ) +
+            geom_node_text(aes(label = name), size = 4, col = "black", repel=TRUE) +
+
+            labs( subtitle = paste0("Ct = ", threshold() )) +
+
+            theme_graph()
+
+    })
 
 
     
 })
 
-# source (does it works here?)
 
-
-
-#if(is.null(input$calculate_Cs)){ return( tibble(sp1 = NA, sp2 = NA, Cs = NA) )  }
-# 
-#         if(input$calculate_Cs == "upload_Cs_csv" ){ return(tibble(sp1 = NA, sp2 = NA, Cs = NA)) }
-# 
-#     if(input$calculate_Cs == "calculate_Cs"){
-# 
-#         
-# 
-#     }
-#     
-#     if(input$calculate_Cs == "Cs_upload_csv") {
-# 
-#         req(input$Cs_table)
-# 
-#         Cs_file <- input$Cs_table
-# 
-#         Cs <- read.csv(Cs_file$datapath, header = TRUE) |> as_tibble() |> select(sp1,sp2,Cs)
-# 
-#     }
-# 
-#     Cs <- Cs |> as_tibble() |> select(sp1, sp2, Cs) |> arrange(desc(Cs)  )
-# 
-# })
-# 
-#     Cs <- reactive({
-# 
-#         if(isTRUE(input$apply_filter_Cs)) { Cs <- Cs_pre() |> filter( Cs > input$filter_Cs ) } else { Cs <- Cs_pre() }
-# 
-#          Cs
-#     })
-#     
-#   

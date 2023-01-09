@@ -17,9 +17,11 @@ map = map %>% select(sp = "SCINAME", geometry)
 # map %>% names
 
 # change CRS https://epsg.io/31985  SIRGAS 2000 25S to fix invalid features!! only way I managed to get some maps to work properly
-map = map %>% st_transform(crs = 31985)
-sa = sa %>% st_transform(crs = 31985)
-amaz = amaz %>% st_transform(crs = 31985)
+# SIRGAS geographic is 4674
+sirgas = 31977#4674
+map = map %>% st_transform(crs = sirgas)  
+sa = sa %>% st_transform(crs = sirgas)
+amaz = amaz %>% st_transform(crs = sirgas)
 
 # Check for 'invalid' shapes and fix them
 invalid = !(st_is_valid(map))
